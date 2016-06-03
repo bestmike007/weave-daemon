@@ -31,4 +31,12 @@ services:
 
 Environment `WEAVE_ROUTER_CMD` and `WEAVE_SUBNET` is required to setup your weave network and weave plugin. Others are optional.
 
-If you need to setup `WEAVE_HOST_CIDR` or `WEAVE_ROUTE_GATEWAY` you need to run this container in privileged mode and also use host network.
+If you need to setup `WEAVE_HOST_CIDR` or `WEAVE_ROUTE_GATEWAY` you need to run this container in privileged mode along with host network.
+
+## Add SDN IP to Container
+
+In some cases you cannot run container with --net and --ip options, e.g. `docker run -d --net=sdn --ip=192.168.0.100 alpine sh`, you can run weave daemon along with those containers simply set up a `WEAVE_IP` env.
+
+```bash
+docker run -d -e WEAVE_IP=192.168.0.100 alpine sh
+```
