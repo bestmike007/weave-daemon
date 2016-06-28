@@ -41,7 +41,8 @@ ip link del weave
 
 [ `docker network ls -f name=${NETWORK_NAME} | wc -l` -eq 1 ] && (
   docker network create --subnet=${WEAVE_SUBNET} --aux-address "DefaultGatewayIPv4=${WEAVE_ROUTE_GATEWAY}" \
-      --gateway=${WEAVE_HOST_IP} -o com.docker.network.bridge.name=br${NETWORK_NAME} ${NETWORK_NAME} || (
+      --gateway=${WEAVE_HOST_IP} -o com.docker.network.bridge.name=br${NETWORK_NAME}\
+      -o com.docker.network.driver.mtu=1410 ${NETWORK_NAME} || (
     echo "Fail to create custom docker network..."
     sleep 60
     kill -s TERM $TOP_PID
