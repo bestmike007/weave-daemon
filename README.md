@@ -10,32 +10,47 @@
 
 ## Example Usage
 
+With docker cli:
+
+```bash
+docker run -d --name=weave-daemon --net=host --privileged --restart=always \
+  -e WEAVE_ROUTER_CMD="--ipalloc-range 192.168.0.0/24 node-01 node-02" \
+  -e WEAVE_SUBNET=192.168.0.0/24 \
+  -e WEAVE_HOST_IP=192.168.0.100 \
+  -e WEAVE_ROUTE_GATEWAY=192.168.0.254 \
+  -e WEAVE_NETWORK_NAME=mysdn \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  bestmike007/weave-daemon:1.6.0
+```
+
+With docker compose:
+
 ```yml
 version: '2'
 
 services:
   weave-daemon:
-    image: weave-daemon
+    image: bestmike007/weave-daemon
     restart: always
     privileged: true
     network_mode: host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - WEAVE_ROUTER_CMD=--ipalloc-range 192.168.0.0/24 10.0.0.1 10.0.0.2 10.0.0.3
+      - WEAVE_ROUTER_CMD=--ipalloc-range 192.168.0.0/24 node-01 node-02
       - WEAVE_SUBNET=192.168.0.0/24
-      - WEAVE_HOST_CIDR=192.168.0.0/24
-      - WEAVE_ROUTE_GATEWAY=192.168.0.1
+      - WEAVE_HOST_IP=192.168.0.100
+      - WEAVE_ROUTE_GATEWAY=192.168.0.254
       - WEAVE_NETWORK_NAME=mysdn
 ```
 
-Environment `WEAVE_ROUTER_CMD` and `WEAVE_SUBNET` is required to setup your weave network and weave plugin. Others are optional.
+Environment `WEAVE_ROUTER_CMD`, `WEAVE_SUBNET`, `WEAVE_ROUTE_GATEWAY` and `WEAVE_HOST_IP` are required to setup your weave network and weave plugin. Others are optional.
 
-If you need to setup `WEAVE_HOST_CIDR` or `WEAVE_ROUTE_GATEWAY` you need to run this container in privileged mode along with host network.
+If you need to setup the default route gateway for the host and route all traffic through weave network, you simply set the `WEAVE_ROUTE_HOST_GATEWAY` environment variable to the gateway IP, e.g. `WEAVE_ROUTE_HOST_GATEWAY=192.168.0.254`
 
 ## Add SDN IP to Container
 
-In some cases you cannot run container with --net and --ip options, e.g. `docker run -d --net=sdn --ip=192.168.0.100 alpine sh`, you can run weave daemon along with those containers simply set up a `WEAVE_IP` env.
+In some cases you cannot run container with --net and --ip options, e.g. `docker run -d --net=mysdn --ip=192.168.0.100 alpine sh`, you can run weave daemon along with those containers simply set up a `WEAVE_IP` env.
 
 ```bash
 docker run -d -e WEAVE_IP=192.168.0.100 alpine sh

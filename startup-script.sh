@@ -5,8 +5,7 @@ export TOP_PID=$$
 NETWORK_NAME=${WEAVE_NETWORK_NAME:-custom}
 
 [ -z "$WEAVE_ROUTER_CMD" ] && (
-  echo "You must specify WEAVE_ROUTER_CMD env. e.g. --no-discovery --no-dns --ipalloc-range 192.168.0.0/24 weave-node-0 weave-node-1"
-  echo "Note: --no-restart is added by default"
+  echo "You must specify WEAVE_ROUTER_CMD env. e.g. --ipalloc-range 192.168.0.0/24 weave-node-0 weave-node-1"
   sleep 60
   kill -s TERM $TOP_PID
 )
@@ -17,23 +16,32 @@ NETWORK_NAME=${WEAVE_NETWORK_NAME:-custom}
   kill -s TERM $TOP_PID
 )
 
+[ -z "$WEAVE_HOST_IP" ] && (
+  echo "You must specify WEAVE_HOST_IP env. e.g. WEAVE_HOST_IP=192.168.0.100"
+  sleep 60
+  kill -s TERM $TOP_PID
+)
+
+[ -z "$WEAVE_ROUTE_GATEWAY" ] && (
+  echo "You must specify WEAVE_ROUTE_GATEWAY env. e.g. WEAVE_ROUTE_GATEWAY=192.168.0.1"
+  sleep 60
+  kill -s TERM $TOP_PID
+)
+
 weave setup || exit 1
-weave stop || exit 1
+weave reset
 echo "Starting weave router..."
 weave launch-router $WEAVE_ROUTER_CMD || (
   echo "Fail to launch router..."
   sleep 60
   kill -s TERM $TOP_PID
 )
+ip link set weave down
+ip link del weave
 
-echo "Starting weave plugin..."
-weave launch-plugin || (
-  echo "Fail to launch plugin..."
-  sleep 60
-  kill -s TERM $TOP_PID
-)
 [ `docker network ls -f name=${NETWORK_NAME} | wc -l` -eq 1 ] && (
-  docker network create -d weavemesh --subnet=${WEAVE_SUBNET} ${NETWORK_NAME} || (
+  docker network create --subnet=${WEAVE_SUBNET} --aux-address "DefaultGatewayIPv4=${WEAVE_ROUTE_GATEWAY}" \
+      --gateway=${WEAVE_HOST_IP} -o com.docker.network.bridge.name=br${NETWORK_NAME} ${NETWORK_NAME} || (
     echo "Fail to create custom docker network..."
     sleep 60
     kill -s TERM $TOP_PID
@@ -41,18 +49,27 @@ weave launch-plugin || (
 ) || (
   echo "Warning: docker network ${NETWORK_NAME} already exists."
 )
+brctl addif br${NETWORK_NAME} vethwe-bridge
 
-[ ! -z "$WEAVE_HOST_CIDR" ] && (
-  echo "Binding ip $WEAVE_HOST_CIDR to host..."
-  weave expose $WEAVE_HOST_CIDR || ip addr change $WEAVE_HOST_CIDR dev weave
-  iptables -D FORWARD -i docker0 -o weave -j DROP
-  [ ! -z "$WEAVE_ROUTE_GATEWAY" ] && (
-    while [ `ip route | grep -e ^default | wc -l` -gt 0 ]; do ( route delete default ) done
-    route add default gw $WEAVE_ROUTE_GATEWAY
-  )
+iptables -I DOCKER-ISOLATION -i br${NETWORK_NAME} -j RETURN
+iptables -I DOCKER-ISOLATION -o br${NETWORK_NAME} -j RETURN
+[ ! -z "$WEAVE_ROUTE_HOST_GATEWAY" ] && (
+  while [ `ip route | grep -e ^default | wc -l` -gt 0 ]; do ( route delete default ) done
+  route add default gw $WEAVE_ROUTE_HOST_GATEWAY
 )
 
-docker events --since "1970-01-01" -f "event=start" -f "event=create" | while read event; do (
+EVENT_SINCE=`date +%s`
+
+docker ps --no-trunc -q | while read CID; do (
+  CIDR_ENV=`docker inspect -f "{{range .Config.Env}}{{println .}}{{end}}" $CID | grep -e ^WEAVE_IP=`
+  [ ! -z "$CIDR_ENV" ] && (
+    export $CIDR_ENV
+    echo "Setting ip ${WEAVE_IP} for container id ${CID}"
+    docker network connect --ip=${WEAVE_IP} ${NETWORK_NAME} ${CID}
+  )
+) done
+
+docker events --since $EVENT_SINCE -f "event=start" -f "event=create" | while read event; do (
   CID=`echo $event | awk '{print $4}'`
   CIDR_ENV=`docker inspect -f "{{range .Config.Env}}{{println .}}{{end}}" $CID | grep -e ^WEAVE_IP=`
   [ ! -z "$CIDR_ENV" ] && (
