@@ -15,7 +15,7 @@ version: '2'
 
 services:
   weave-daemon:
-    image: bestmike007/weave-daemon:1.6.0
+    image: bestmike007/weave-daemon:1.7.1
     restart: always
     privileged: true
     network_mode: host
@@ -33,7 +33,7 @@ docker run -d --name=weave-daemon --net=host --privileged --restart=always \
   -e WEAVE_HOST_CIDR=192.168.0.0/24 \
   -e WEAVE_ROUTE_GATEWAY=192.168.0.1 \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  bestmike007/weave-daemon:1.6.0
+  bestmike007/weave-daemon:1.7.1
 ```
 
 Environment `WEAVE_ROUTER_CMD` is required to setup your weave network and weave plugin. Others are optional.
