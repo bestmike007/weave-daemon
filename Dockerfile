@@ -1,7 +1,7 @@
 FROM docker:1.12.2
 MAINTAINER Yuanhai He <i@bestmike007.com>
 
-ENV WEAVE_VERSION=1.7.1 \
+ENV WEAVE_VERSION=1.7.2 \
     DOCKER_VERSION=1.12.2
 
 ADD startup-script.sh /start
