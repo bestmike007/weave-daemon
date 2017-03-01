@@ -49,15 +49,12 @@ sleep 3
 
 echo "Binding weave ip for all containers with env WEAVE_CIDR..."
 
-(docker ps --no-trunc -q && docker events --since=`date +%s` -f "event=start" -f "event=create" | awk '{print $4}') | while read CID; do (
+(docker ps --no-trunc -q && docker events --since `date +%s` --format '{{.ID}}' -f "event=start") | while read CID; do (
   CIDR_ENV=`docker inspect -f "{{range .Config.Env}}{{println .}}{{end}}" $CID | grep -e ^WEAVE_CIDR=`
   [ ! -z "$CIDR_ENV" ] && (
     export $CIDR_ENV
     echo "Setting ip ${WEAVE_CIDR} for container id ${CID}"
-    weave attach ${WEAVE_CIDR} ${CID} || (
-      echo "Fail to set ip ${WEAVE_CIDR} for container id ${CID}, retrying..."
-      sleep 1
-      weave attach ${WEAVE_CIDR} ${CID}
-    )
+    # weave attach ${WEAVE_CIDR} ${CID}
+    docker network connect --ip=${WEAVE_CIDR} weave ${CID}
   )
 ) done
