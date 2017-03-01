@@ -20,8 +20,8 @@ sleep 3
 
 [ -z "`docker ps -qf ancestor=weaveworks/weave:${WEAVE_VERSION}`" ] && (
   weave reset --force
-  echo "Starting weave router..."
-  weave launch-router $WEAVE_ROUTER_CMD || (
+  echo "Starting weave..."
+  weave launch $WEAVE_ROUTER_CMD || (
     echo "Fail to launch router..."
     sleep 60
     kill -s TERM $TOP_PID
@@ -54,6 +54,10 @@ echo "Binding weave ip for all containers with env WEAVE_CIDR..."
   [ ! -z "$CIDR_ENV" ] && (
     export $CIDR_ENV
     echo "Setting ip ${WEAVE_CIDR} for container id ${CID}"
-    weave attach ${WEAVE_CIDR} ${CID}
+    weave attach ${WEAVE_CIDR} ${CID} || (
+      echo "Fail to set ip ${WEAVE_CIDR} for container id ${CID}, retrying..."
+      sleep 1
+      weave attach ${WEAVE_CIDR} ${CID}
+    )
   )
 ) done
