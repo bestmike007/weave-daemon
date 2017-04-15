@@ -1,8 +1,7 @@
 #!/bin/sh
 export TOP_PID=$$
-trap "echo 'Force killed...'; exit 1" SIGTERM TERM
-trap "echo 'Cleaning up...'; exit 0" SIGHUP SIGINT INT HUP EXIT SIGQUIT
-NETWORK_NAME=${WEAVE_NETWORK_NAME:-custom}
+trap "echo 'Force killed...'; kill -s TERM $TOP_PID; exit 1" SIGTERM TERM
+trap "echo 'Cleaning up...'; kill -s TERM $TOP_PID; exit 0" SIGHUP SIGINT INT HUP EXIT SIGQUIT
 
 [ "$1" == "setup" ] && (
   weave setup
@@ -41,6 +40,7 @@ sleep 3
   )
   iptables -I FORWARD -o weave -j ACCEPT
   iptables -I FORWARD -i weave -j ACCEPT
+  iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
   [ ! -z "$WEAVE_ROUTE_GATEWAY" ] && (
     while [ `ip route | grep -e ^default | wc -l` -gt 0 ]; do ( route delete default ) done
     route add default gw $WEAVE_ROUTE_GATEWAY
@@ -59,5 +59,5 @@ echo "Binding weave ip for all containers with env WEAVE_CIDR..."
       sleep 0.3
       weave attach ${WEAVE_CIDR} ${CID}
     )
-  )
+  ) &
 ) done
