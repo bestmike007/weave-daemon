@@ -27,7 +27,7 @@ sleep 3
   )
   weave expose $WEAVE_HOST_CIDR || weave expose
 ) || (
-  echo "NOTICE: weave router has already started, if it's not started by weave daemon please manually stop the container."
+  echo "NOTICE: weave router has already been started, if it's not started by weave daemon please stop it manually."
 )
 
 [ ! -z "$WEAVE_HOST_CIDR" ] && (
@@ -38,9 +38,9 @@ sleep 3
   [ -z "`ip addr show weave | grep $WEAVE_HOST_CIDR`" ] && (
     ip addr change $WEAVE_HOST_CIDR dev weave
   )
-  iptables -I FORWARD -o weave -j ACCEPT
-  iptables -I FORWARD -i weave -j ACCEPT
-  iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+  [ -z "`iptables-save | grep 'FORWARD -o weave -j ACCEPT'`" ] && iptables -I FORWARD -o weave -j ACCEPT
+  [ -z "`iptables-save | grep 'FORWARD -i weave -j ACCEPT'`" ] && iptables -I FORWARD -i weave -j ACCEPT
+  [ -z "`iptables-save | grep 'FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu'`" ] && iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
   [ ! -z "$WEAVE_ROUTE_GATEWAY" ] && (
     while [ `ip route | grep -e ^default | wc -l` -gt 0 ]; do ( route delete default ) done
     route add default gw $WEAVE_ROUTE_GATEWAY
@@ -56,7 +56,7 @@ echo "Binding weave ip for all containers with env WEAVE_CIDR..."
     echo "Setting ip ${WEAVE_CIDR} for container id ${CID}"
     weave attach ${WEAVE_CIDR} ${CID} || (
       echo "Retry setting ip ${WEAVE_CIDR} for container id ${CID}"
-      sleep 0.3
+      sleep 3
       weave attach ${WEAVE_CIDR} ${CID}
     )
   ) &
