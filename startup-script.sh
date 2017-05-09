@@ -38,8 +38,11 @@ sleep 3
   [ -z "`ip addr show weave | grep $WEAVE_HOST_CIDR`" ] && (
     ip addr change $WEAVE_HOST_CIDR dev weave
   )
-  [ -z "`iptables-save | grep 'FORWARD -o weave -j ACCEPT'`" ] && iptables -I FORWARD -o weave -j ACCEPT
-  [ -z "`iptables-save | grep 'FORWARD -i weave -j ACCEPT'`" ] && iptables -I FORWARD -i weave -j ACCEPT
+  [ -z "`iptables-save | grep 'FORWARD -o weave -j ACCEPT'`" ] && iptables -D FORWARD -o weave -j ACCEPT
+  [ -z "`iptables-save | grep 'FORWARD -i weave -j ACCEPT'`" ] && iptables -D FORWARD -i weave -j ACCEPT
+  [ -z "`iptables-save | grep 'FORWARD -i docker0 -o weave -j DROP'`" ] && iptables -D FORWARD -i docker0 -o weave -j DROP
+  iptables -I FORWARD -o weave -j ACCEPT
+  iptables -I FORWARD -i weave -j ACCEPT
   [ -z "`iptables-save | grep 'FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu'`" ] && iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
   [ ! -z "$WEAVE_ROUTE_GATEWAY" ] && (
     while [ `ip route | grep -e ^default | wc -l` -gt 0 ]; do ( route delete default ) done
